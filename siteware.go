@@ -16,8 +16,8 @@ const DestinationRepoName = "livewareesports.github.io"
 const StaticDirName = "static"
 const SourceDirName = "src"
 const TemplateDirName = "templates"
-var SourceRepo = filepath.Join(GoPath, "src", OrgName, SourceRepoName)
-var DestinationRepo = filepath.Join(GoPath, "src", OrgName, DestinationRepoName)
+var SourceRepo = filepath.Join(GoPath, "src", "github.com", OrgName, SourceRepoName)
+var DestinationRepo = filepath.Join(GoPath, "src", "github.com", OrgName, DestinationRepoName)
 
 var InfoLogger = log.New(os.Stdout, "# ", log.Lmicroseconds)
 
