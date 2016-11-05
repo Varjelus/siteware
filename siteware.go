@@ -83,12 +83,14 @@ func generateHTML() error {
             if err != nil {
                 return err
             }
-            defer file.Close()
             // Run templates
             if err := template.Must(template.ParseFiles(
                 filepath.Join(SourceRepo, TemplateDirName, "base.tmpl"),
                 path,
             )).Execute(file, nil); err != nil {
+                return err
+            }
+            if err := file.Close(); err != nil {
                 return err
             }
         }
