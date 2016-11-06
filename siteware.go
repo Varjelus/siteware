@@ -74,7 +74,7 @@ func generateHTML() error {
         }
 
         if info.Mode().IsDir() {
-            InfoLogger.Printf("Creating directory %s...\n", relPath)
+            InfoLogger.Printf("Creating directory \\%s...\n", relPath)
             return os.MkdirAll(destPath, info.Mode())
         } else if info.Mode().IsRegular() {
             InfoLogger.Printf("Creating %s...\n", relPath)
