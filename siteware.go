@@ -19,7 +19,6 @@ type command struct {
 
 type config struct {
 	Output string
-	Port   int
 }
 
 type dirConfig map[string]fileConfig
@@ -33,6 +32,8 @@ var Config config
 var DefaultDirConfig = make(map[string]fileConfig)
 
 var InputPath = filepath.Dir(os.Args[0])
+
+const Port = 8080
 
 const StaticDirName = "static"
 const SourceDirName = "src"
@@ -99,8 +100,8 @@ func main() {
 }
 
 func serve() {
-	InfoLogger.Printf("Serving files at http://localhost:%d...\n", Config.Port)
-	ErrorLogger.Println(http.ListenAndServe(fmt.Sprintf(":%d", Config.Port), http.FileServer(http.Dir(InputPath))))
+	InfoLogger.Printf("Serving files at http://localhost:%d...\n", Port)
+	ErrorLogger.Println(http.ListenAndServe(fmt.Sprintf(":%d", Port), http.FileServer(http.Dir(InputPath))))
 }
 
 func initialize() {
