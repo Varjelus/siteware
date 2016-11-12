@@ -153,7 +153,7 @@ func build() {
 		panic(err)
 	}
 	for _, file := range files {
-		if file.Name() == ".git" || file.Name() == StaticDirName {
+		if file.Name() == ".git" || file.Name() == StaticDirName || file.Name() == ".gitignore" || file.Name() == "CNAME" {
 			continue
 		}
 		if file.IsDir() {
