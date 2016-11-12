@@ -63,22 +63,6 @@ func init() {
 }
 
 func main() {
-	// Load config
-	cfgPath := filepath.Join(InputPath, ConfigFileName)
-	cfgf, err := os.Open(cfgPath)
-	if err != nil {
-		ErrorLogger.Printf("Error opening config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
-	}
-	if err := json.NewDecoder(cfgf).Decode(&Config); err != nil {
-		ErrorLogger.Printf("Error decoding config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
-	}
-	if err := cfgf.Close(); err != nil {
-		ErrorLogger.Printf("Error closing config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
-	}
-
 	// Run a command
 	if len(os.Args) < 2 {
 		fmt.Println("Please provide a command")
@@ -127,6 +111,22 @@ func initialize() {
 }
 
 func build() {
+    // Load config
+	cfgPath := filepath.Join(InputPath, ConfigFileName)
+	cfgf, err := os.Open(cfgPath)
+	if err != nil {
+		ErrorLogger.Printf("Error opening config file \"%s\": %v\n", cfgPath, err)
+		os.Exit(1)
+	}
+	if err := json.NewDecoder(cfgf).Decode(&Config); err != nil {
+		ErrorLogger.Printf("Error decoding config file \"%s\": %v\n", cfgPath, err)
+		os.Exit(1)
+	}
+	if err := cfgf.Close(); err != nil {
+		ErrorLogger.Printf("Error closing config file \"%s\": %v\n", cfgPath, err)
+		os.Exit(1)
+	}
+
 	InputPath, err := filepath.Abs(InputPath)
 	if err != nil {
 		ErrorLogger.Printf("Error resolving input path %s: %v\n", InputPath, err)
