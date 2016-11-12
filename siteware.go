@@ -192,7 +192,6 @@ func generateHTML() error {
 		}
 
 		// Try to load config file
-        InfoLogger.Println("Reading directory configuration...")
 		// Get path of this directory
 		dir := filepath.Dir(path)
 		// See if the config for this dir is already read
@@ -204,6 +203,7 @@ func generateHTML() error {
 			if err != nil {
 				// If there is no config file, use defaults
 				if os.IsNotExist(err) {
+                    InfoLogger.Println("Using default configuration")
 					configs[dir] = DefaultDirConfig
 					cfg = DefaultDirConfig
 				} else {
@@ -226,7 +226,7 @@ func generateHTML() error {
 			InfoLogger.Printf("Creating directory %s...\n", relPath)
 			return os.MkdirAll(destPath, info.Mode())
 		} else if info.Mode().IsRegular() && ext == ".html" || ext == ".htm" {
-			InfoLogger.Printf("Creating %s...\n", relPath)
+			InfoLogger.Printf("Create %s\n", relPath)
 
 			// Create file
 			file, err := os.Create(destPath)
@@ -242,9 +242,14 @@ func generateHTML() error {
 				ftmpl = DefaultTemplateName
 				fdata = nil
 			} else {
-				ftmpl = fcfg.Template
+                if fcfg.Template == "" {
+                    ftmpl = DefaultTemplateName
+                } else {
+                    ftmpl = fcfg.Template
+                }
 				fdata = fcfg.Data
 			}
+            InfoLogger.Printf("Using configuration %v for %s\n", fdata, path)
 
 			if err := template.Must(template.ParseFiles(
 				filepath.Join(InputPath, TemplateDirName, ftmpl),
