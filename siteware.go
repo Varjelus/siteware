@@ -85,27 +85,23 @@ func main() {
 
 func serve() {
 	InfoLogger.Printf("Serving files at http://localhost:%d...\n", Port)
-	ErrorLogger.Println(http.ListenAndServe(fmt.Sprintf(":%d", Port), http.FileServer(http.Dir(InputPath))))
+	ErrorLogger.Fatalln(http.ListenAndServe(fmt.Sprintf(":%d", Port), http.FileServer(http.Dir(InputPath))))
 }
 
 func initialize() {
 	InfoLogger.Println("Initializing new project...")
 	fi, err := os.Stat(InputPath)
 	if err != nil {
-		ErrorLogger.Printf("Error reading parent directory info: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error reading parent directory info: %v\n", err)
 	}
 	if err := os.MkdirAll(filepath.Join(InputPath, StaticDirName), fi.Mode()); err != nil {
-		ErrorLogger.Printf("Error creating static directory: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error creating static directory: %v\n", err)
 	}
 	if err := os.MkdirAll(filepath.Join(InputPath, SourceDirName), fi.Mode()); err != nil {
-		ErrorLogger.Printf("Error creating source directory: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error creating source directory: %v\n", err)
 	}
 	if err := os.MkdirAll(filepath.Join(InputPath, TemplateDirName), fi.Mode()); err != nil {
-		ErrorLogger.Printf("Error creating template directory: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error creating template directory: %v\n", err)
 	}
 	InfoLogger.Println("Done!")
 }
@@ -115,26 +111,21 @@ func build() {
 	cfgPath := filepath.Join(InputPath, ConfigFileName)
 	cfgf, err := os.Open(cfgPath)
 	if err != nil {
-		ErrorLogger.Printf("Error opening config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error opening config file \"%s\": %v\n", cfgPath, err)
 	}
 	if err := json.NewDecoder(cfgf).Decode(&Config); err != nil {
-		ErrorLogger.Printf("Error decoding config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error decoding config file \"%s\": %v\n", cfgPath, err)
 	}
 	if err := cfgf.Close(); err != nil {
-		ErrorLogger.Printf("Error closing config file \"%s\": %v\n", cfgPath, err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error closing config file \"%s\": %v\n", cfgPath, err)
 	}
 
 	InputPath, err := filepath.Abs(InputPath)
 	if err != nil {
-		ErrorLogger.Printf("Error resolving input path %s: %v\n", InputPath, err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error resolving input path %s: %v\n", InputPath, err)
 	}
 	if Config.Output == "" {
-		ErrorLogger.Println("Output directory unset in configuration")
-		os.Exit(1)
+		ErrorLogger.Fatalln("Output directory unset in configuration")
 	}
 
 	// Clear site repo, excluding .git and static files directory
@@ -142,11 +133,10 @@ func build() {
 	repo, err := os.Open(Config.Output)
 	if err != nil {
 		if os.IsNotExist(err) {
-			ErrorLogger.Printf("Path %s does not exist\n", Config.Output)
-		} else {
-			ErrorLogger.Printf("Can't open path %s: %v\n", Config.Output, err)
+			ErrorLogger.Fatalf("Path %s does not exist\n", Config.Output)
 		}
-		os.Exit(1)
+
+		ErrorLogger.Fatalf("Can't open path %s: %v\n", Config.Output, err)
 	}
 	files, err := repo.Readdir(0)
 	if err != nil {
@@ -163,22 +153,19 @@ func build() {
 		}
 	}
 	if err := repo.Close(); err != nil {
-		ErrorLogger.Printf("Error closing destination: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error closing destination: %v\n", err)
 	}
 
 	// Sync static files
 	InfoLogger.Println("Syncing statics...")
 	if err := dirsync.Sync(filepath.Join(InputPath, StaticDirName), filepath.Join(Config.Output, StaticDirName)); err != nil {
-		ErrorLogger.Printf("Error syncing static files: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error syncing static files: %v\n", err)
 	}
 
 	// Generate HTML
 	InfoLogger.Println("Generating HTML files...")
 	if err := generateHTML(); err != nil {
-		ErrorLogger.Printf("Error generating HTML: %v\n", err)
-		os.Exit(1)
+		ErrorLogger.Fatalf("Error generating HTML: %v\n", err)
 	}
 }
 
