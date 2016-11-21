@@ -84,7 +84,7 @@ func main() {
 }
 
 func serve() {
-	InfoLogger.Printf("Serving files at http://localhost:%d...\n", Port)
+	InfoLogger.Printf("Serving files at http://localhost:%d. Press Ctrl+C to terminate.\n", Port)
 	ErrorLogger.Fatalln(http.ListenAndServe(fmt.Sprintf(":%d", Port), http.FileServer(http.Dir(InputPath))))
 }
 
