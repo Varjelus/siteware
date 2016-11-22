@@ -47,6 +47,8 @@ var ErrorLogger = log.New(os.Stdout, "Error: ", log.Lmicroseconds)
 
 var Commands = make(map[string]command)
 
+var TemplateFunctions template.FuncMap
+
 func init() {
 	Commands["init"] = command{
 		F:           initialize,
@@ -59,6 +61,10 @@ func init() {
 	Commands["serve"] = command{
 		F:           serve,
 		Description: "Serves current directory with HTTP.",
+	}
+
+	TemplateFunctions = template.FuncMap{
+		"readdir": readdir,
 	}
 }
 
@@ -239,10 +245,11 @@ func generateHTML() error {
 			}
             InfoLogger.Printf("Using configuration %v for %s\n", fdata, path)
 
-			if err := template.Must(template.ParseFiles(
-				filepath.Join(InputPath, TemplateDirName, ftmpl),
-				path,
-			)).Execute(file, fdata); err != nil {
+			t, err := template.New(ftmpl).Funcs(TemplateFunctions).ParseFiles(filepath.Join(InputPath, TemplateDirName, ftmpl), path)
+			if err != nil {
+				return err
+			}
+			if err := t.Execute(file, fdata); err != nil {
 				return err
 			}
 			if err := file.Close(); err != nil {
@@ -255,4 +262,23 @@ func generateHTML() error {
 	}
 
 	return nil
+}
+
+func readdir(path string) (files []os.FileInfo) {
+	var err error
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return
+	}
+
+	var root *os.File
+	root, err = os.Open(path)
+	if err != nil {
+		return
+	}
+	defer root.Close()
+
+	files, err = root.Readdir(0)
+	return
 }
