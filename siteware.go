@@ -50,7 +50,7 @@ const TemplateDirName = "templates"
 const DirConfigFileName = "siteware.json"
 const DefaultTemplateName = "default.template"
 const ConfigFileName = "siteware.master.json"
-const ThumbDirName = ".thumbs"
+const ThumbDirName = "thumbnails"
 
 var InfoLogger = log.New(os.Stdout, "# ", log.Lmicroseconds)
 var ErrorLogger = log.New(os.Stdout, "Error: ", log.Lmicroseconds)
