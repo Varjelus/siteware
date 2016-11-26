@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Varjelus/dirsync"
+	"github.com/disintegration/imaging"
 	"html/template"
+	"image"
 	"log"
 	"net/http"
 	"os"
@@ -21,11 +23,18 @@ type config struct {
 	Output string
 }
 
+type thumbnailConfig struct {
+	Method string
+	Width  int
+	Height int
+}
+
 type dirConfig map[string]fileConfig
 
 type fileConfig struct {
-	Template string
-	Data     interface{}
+	Template      string
+	Data          interface{}
+	AutoThumbnail map[string]thumbnailConfig
 }
 
 var Config config
@@ -41,6 +50,7 @@ const TemplateDirName = "templates"
 const DirConfigFileName = "siteware.json"
 const DefaultTemplateName = "default.template"
 const ConfigFileName = "siteware.master.json"
+const ThumbDirName = ".thumbs"
 
 var InfoLogger = log.New(os.Stdout, "# ", log.Lmicroseconds)
 var ErrorLogger = log.New(os.Stdout, "Error: ", log.Lmicroseconds)
@@ -72,7 +82,7 @@ func main() {
 	// Run a command
 	if len(os.Args) < 2 {
 		fmt.Println("Please provide a command")
-        for c := range Commands {
+		for c := range Commands {
 			fmt.Printf("%s:\t %s\n", c, Commands[c].Description)
 		}
 		os.Exit(1)
@@ -113,7 +123,7 @@ func initialize() {
 }
 
 func build() {
-    // Load config
+	// Load config
 	cfgPath := filepath.Join(InputPath, ConfigFileName)
 	cfgf, err := os.Open(cfgPath)
 	if err != nil {
@@ -197,30 +207,71 @@ func generateHTML() error {
 			if err != nil {
 				// If there is no config file, use defaults
 				if os.IsNotExist(err) {
-                    InfoLogger.Println("Using default configuration")
+					//InfoLogger.Println("Using default configuration")
 					configs[dir] = DefaultDirConfig
 					cfg = DefaultDirConfig
 				} else {
-                    return err
-                }
+					return err
+				}
 			} else {
-                // Decode the json and close the file
-    			if err := json.NewDecoder(cfgf).Decode(&cfg); err != nil {
-    				return err
-    			}
-    			configs[dir] = cfg
-    			if err := cfgf.Close(); err != nil {
-    				return err
-    			}
-            }
+				// Decode the json and close the file
+				if err := json.NewDecoder(cfgf).Decode(&cfg); err != nil {
+					return err
+				}
+				configs[dir] = cfg
+				if err := cfgf.Close(); err != nil {
+					return err
+				}
+
+				// FIXME: This functionality should be moved elsewhere
+				// Generate thumbnails
+				if _, exist := cfg[StaticDirName]; exist {
+					for imgDirPath, thumbCfg := range cfg[StaticDirName].AutoThumbnail {
+						imgSrcDirPath := filepath.Join(InputPath, StaticDirName, imgDirPath)
+						InfoLogger.Printf("Generating thumbnails for %s...\n", imgDirPath)
+						if err := os.MkdirAll(filepath.Join(Config.Output, StaticDirName, imgDirPath, ThumbDirName), info.Mode()); err != nil {
+							return err
+						}
+						if err := filepath.Walk(imgSrcDirPath, func(imgPath string, imgInfo os.FileInfo, err error) error {
+							ext := filepath.Ext(imgPath)
+							if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+								return nil
+							}
+							relImgPath := strings.TrimPrefix(imgPath, filepath.Join(InputPath, SourceDirName))
+							destImgPath := filepath.Join(Config.Output, filepath.Dir(relImgPath), ThumbDirName, imgInfo.Name())
+							if err := thumbnail(imgPath, destImgPath, thumbCfg); err != nil {
+								return err
+							}
+							return nil
+						}); err != nil {
+							return err
+						}
+					}
+				}
+			}
 		}
+		var ftmpl string
+		var fdata interface{}
+		fcfg, exist := cfg[info.Name()]
+		if !exist {
+			ftmpl = DefaultTemplateName
+			fdata = nil
+		} else {
+			if fcfg.Template == "" {
+				ftmpl = DefaultTemplateName
+			} else {
+				ftmpl = fcfg.Template
+			}
+			fdata = fcfg.Data
+		}
+		//InfoLogger.Printf("Using configuration %v for %s\n", fdata, path)
 
 		ext := filepath.Ext(path)
 		if info.Mode().IsDir() {
-			InfoLogger.Printf("Creating directory %s...\n", relPath)
+			//InfoLogger.Printf("Creating directory %s...\n", relPath)
 			return os.MkdirAll(destPath, info.Mode())
 		} else if info.Mode().IsRegular() && ext == ".html" || ext == ".htm" {
-			InfoLogger.Printf("Create %s\n", relPath)
+			//InfoLogger.Printf("Create %s\n", relPath)
 
 			// Create file
 			file, err := os.Create(destPath)
@@ -229,22 +280,6 @@ func generateHTML() error {
 			}
 
 			// Run templates
-			var ftmpl string
-			var fdata interface{}
-			fcfg, exist := cfg[info.Name()]
-			if !exist {
-				ftmpl = DefaultTemplateName
-				fdata = nil
-			} else {
-                if fcfg.Template == "" {
-                    ftmpl = DefaultTemplateName
-                } else {
-                    ftmpl = fcfg.Template
-                }
-				fdata = fcfg.Data
-			}
-            InfoLogger.Printf("Using configuration %v for %s\n", fdata, path)
-
 			t, err := template.New(ftmpl).Funcs(TemplateFunctions).ParseFiles(filepath.Join(InputPath, TemplateDirName, ftmpl), path)
 			if err != nil {
 				return err
@@ -258,6 +293,34 @@ func generateHTML() error {
 		}
 		return nil
 	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func thumbnail(src string, dest string, cfg thumbnailConfig) error {
+	srcImg, err := imaging.Open(src)
+	if err != nil {
+		return err
+	}
+
+	var thumb *image.NRGBA
+
+	switch strings.ToLower(cfg.Method) {
+	case "resize":
+		thumb = imaging.Resize(srcImg, cfg.Width, cfg.Height, imaging.Box)
+	case "fit":
+		thumb = imaging.Fit(srcImg, cfg.Width, cfg.Height, imaging.Box)
+	case "fill":
+		thumb = imaging.Fill(srcImg, cfg.Width, cfg.Height, imaging.Center, imaging.Box)
+	case "thumbnail":
+		fallthrough
+	default:
+		thumb = imaging.Thumbnail(srcImg, cfg.Width, cfg.Height, imaging.Box)
+	}
+
+	if err = imaging.Save(thumb, dest); err != nil {
 		return err
 	}
 
